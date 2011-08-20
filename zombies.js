@@ -139,7 +139,7 @@ var Bullet = Object.extend({
 
     frame: function() {
         this.go(20);
-        if (this.x < 0 || this.y < 0 || this.x > 1024 || this.y > 768)
+        if (this.x < 0 || this.y < 0 || this.x > 800 || this.y > 600)
             game.removeObject(this);
 
         var collider = this.collider();
@@ -155,6 +155,7 @@ var Bullet = Object.extend({
 var Weapon = Object.extend({
     lastBullet: 0,
     speed: 100,
+    isCollider: false,
 
     initialize: function() {
         Object.prototype.initialize.call(this, 0, 21, 5, 11);
@@ -180,41 +181,51 @@ var Player = Object.extend({
 
     initialize: function() {
         Object.prototype.initialize.call(this, 0, 0, 48, 16);
-        this.inputHandler = new InputHandler();
         this.weapon1 = new Weapon();
         this.weapon2 = new Weapon();
+        this.health = 100;
     },
 
     frame: function() {
-        if (this.inputHandler.pressed(this.KEY_UP)) {
+        if (game.inputHandler.pressed(this.KEY_UP)) {
             this.go(8);
         }
-        if (this.inputHandler.pressed(this.KEY_DOWN)) {
+        if (game.inputHandler.pressed(this.KEY_DOWN)) {
             this.go(-4);
         }
-        if (this.inputHandler.pressed(this.KEY_LEFT)) {
+        if (game.inputHandler.pressed(this.KEY_LEFT)) {
             this.rotation(this.rad-0.2);
         }
-        if (this.inputHandler.pressed(this.KEY_RIGHT)) {
+        if (game.inputHandler.pressed(this.KEY_RIGHT)) {
             this.rotation(this.rad+0.2);
         }
-        if (this.inputHandler.pressed(this.KEY_FIRE)) {
+        if (game.inputHandler.pressed(this.KEY_FIRE)) {
             this.weapon1.shoot();
             this.weapon2.shoot();
         }
 
-        this.weapon1.positionRelativeTo(this, -20, 10, 0.1);
-        this.weapon2.positionRelativeTo(this, 20, 10, -0.1);
+        this.weapon1.positionRelativeTo(this, -20, 10, -0.1);
+        this.weapon2.positionRelativeTo(this, 20, 10, 0.01);
     }
 });
 
 var Game = Backbone.Model.extend({
 
+    KEY_PAUSE: 27,
     objects: [],
+    paused: false,
 
     initialize: function() {
+        this.inputHandler = new InputHandler();
         var self = this;
-        window.setInterval(function() { self.frame(); }, 30);
+        $(window).keydown(function(e) {
+            if (e.keyCode == self.KEY_PAUSE)
+                self.paused = !self.paused;
+        });
+        window.setInterval(function() { 
+            if (!self.paused)
+                self.frame(); 
+        }, 30);
     },
 
     addObject: function(object) {
@@ -240,6 +251,7 @@ $(function() {
     game.player.position(500, 500);
     (new Zombie()).position(250, 150);
     window.setInterval(function() {
-        (new Zombie()).position(Math.random()*1024, Math.random()*786);
+        if (!game.paused)
+            (new Zombie()).position(Math.random()*800, Math.random()*600);
     }, 3000);
 });
