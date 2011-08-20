@@ -22,6 +22,8 @@ var InputHandler = Backbone.Model.extend({
 
 var Object = Backbone.Model.extend({
 
+    isCollider: true,
+
     initialize: function(x, y, width, height) {
         this.width = width;
         this.height = height;
@@ -61,6 +63,17 @@ var Object = Backbone.Model.extend({
         });
     },
 
+    positionRelativeTo: function(object, x, y, angle) {
+        var a = $V([object.x + object.width / 2, 
+                       object.y + object.height / 2]);
+        var b = $V([a.elements[0]+x, a.elements[1]+y]);
+
+        var c = b.rotate(object.rad, a);
+
+        this.position(c.elements[0]-(this.width/2), c.elements[1]-(this.height/2));
+        this.rotation(object.rad + (angle || 0));
+    },
+
     go: function(speed) {
         var xOffset = Math.sin(this.rad) * speed;
         var yOffset = Math.cos(this.rad) * speed;
@@ -72,6 +85,7 @@ var Object = Backbone.Model.extend({
         var result = null;
         _.each(game.objects, function(object) {
             if (object != self &&
+                object.isCollider &&
                 self.x >= object.x && self.x <= object.x+object.width &&
                 self.y >= object.y && self.y <= object.y+object.height)
             {
@@ -116,12 +130,15 @@ var Zombie = Object.extend({
 });
 
 var Bullet = Object.extend({
+
+    isCollider: false,
+
     initialize: function() {
         Object.prototype.initialize.call(this, 0, 16, 5, 5);
     },
 
     frame: function() {
-        this.go(10);
+        this.go(20);
         if (this.x < 0 || this.y < 0 || this.x > 1024 || this.y > 768)
             game.removeObject(this);
 
@@ -135,41 +152,59 @@ var Bullet = Object.extend({
     }
 });
 
+var Weapon = Object.extend({
+    lastBullet: 0,
+    speed: 100,
+
+    initialize: function() {
+        Object.prototype.initialize.call(this, 0, 21, 5, 11);
+    },
+
+    shoot: function() {
+        var now = (new Date()).getTime();
+        if (now-this.lastBullet > this.speed) {
+            var bullet = new Bullet();
+            bullet.positionRelativeTo(this, 0, 10);
+            this.lastBullet = now;
+        }
+    }
+
+});
+
 var Player = Object.extend({
     KEY_LEFT: 65,
     KEY_RIGHT: 68,
     KEY_UP: 87,
     KEY_DOWN: 83,
     KEY_FIRE: 32,
-    lastBullet: 0,
 
     initialize: function() {
         Object.prototype.initialize.call(this, 0, 0, 48, 16);
         this.inputHandler = new InputHandler();
+        this.weapon1 = new Weapon();
+        this.weapon2 = new Weapon();
     },
 
     frame: function() {
         if (this.inputHandler.pressed(this.KEY_UP)) {
-            this.go(10);
+            this.go(8);
         }
         if (this.inputHandler.pressed(this.KEY_DOWN)) {
             this.go(-4);
         }
         if (this.inputHandler.pressed(this.KEY_LEFT)) {
-            this.rotation(this.rad-0.1);
+            this.rotation(this.rad-0.2);
         }
         if (this.inputHandler.pressed(this.KEY_RIGHT)) {
-            this.rotation(this.rad+0.1);
+            this.rotation(this.rad+0.2);
         }
         if (this.inputHandler.pressed(this.KEY_FIRE)) {
-            var now = (new Date()).getTime();
-            if (now-this.lastBullet > 200) {
-                var bullet = new Bullet();
-                bullet.position(this.x, this.y);
-                bullet.rotation(this.rad);
-                this.lastBullet = now;
-            }
+            this.weapon1.shoot();
+            this.weapon2.shoot();
         }
+
+        this.weapon1.positionRelativeTo(this, -20, 10, 0.1);
+        this.weapon2.positionRelativeTo(this, 20, 10, -0.1);
     }
 });
 
