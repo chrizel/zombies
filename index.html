@@ -2,14 +2,24 @@
 <head>
     <style>
         * {
-            position: absolute;
             border: none;
             margin: 0;
             padding: 0;
         }
 
         html, body {
+            background-color: #333;
+        }
+
+        #screen {
             background-color: #000;
+            height: 786px;
+            width: 1024px;
+            overflow: hidden;
+        }
+
+        .object {
+            position: absolute;
         }
     </style>
 
@@ -19,5 +29,6 @@
     <script type="text/javascript" src="zombies.js"></script>
 </head>
 <body>
+<div id="screen"></div>
 </body>
 </html>
