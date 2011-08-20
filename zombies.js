@@ -24,8 +24,9 @@ var Object = Class.extend({
 
     isCollider: true,
     isWall: false,
+    isDead: false,
 
-    init: function(x, y, width, height) {
+    init: function(x, y, width, height, skipAdd) {
         this.width = width;
         this.height = height;
         this.div = $('<div>')
@@ -40,10 +41,13 @@ var Object = Class.extend({
         this.position(0, 0);
         this.rotation(0);
 
-        game.addObject(this);
-    },   
+        if (!skipAdd)
+            game.addObject(this);
+    },
 
     onRemove: function() {
+        $(this.div).remove();
+        this.isDead = true;
     },
 
     setSprite: function(x, y) {
@@ -126,43 +130,80 @@ var Brick = Object.extend({
 
 });
 
+var Blood = Object.extend({
+
+    isCollider: false,
+
+    init: function() {
+        this._super(16, 16, 16, 16, true);
+        $(this.div).css('z-index', 50);
+    },
+
+});
+
+var BloodStack = new (Class.extend({
+
+    stack: [],
+    max: 50,
+
+    init: function() {
+    },
+
+    add: function(sender) {
+        var b = new Blood();
+        b.positionRelativeTo(sender, 0, 0);
+        this.stack.push(b);
+        if (this.stack.length > this.max) {
+            game.removeObject(this.stack[0]);
+            this.stack.splice(0, 1);
+        }
+    },
+
+}));
+
 var Zombie = Object.extend({
     lastDamage: 0,
     damageSpeed: 1000,
 
-    init: function() {
+    init: function(target) {
         this._super(48, 0, 48, 32);
         this.health = 30;
+        this.target = target || game.player;
     },
 
     frame: function() {
-        var p = game.player;
+        if (this.target.isDead)
+            this.target == game.player;
+
+        var p = this.target;
         var a = p.x - this.x;
         var b = p.y - this.y;
         var c = Math.sqrt(a*a+b*b);
 
         var alpha = Math.acos((a*a-b*b-c*c) / (-2*b*c)) * (a > 0 ? -1 : 1);
 
-        this.rotation(alpha);
+        this.rotation(alpha + (-0.1 + Math.random() * 0.2));
         if (c > 16)
             this.go(2, true);
 
         this.setSprite(48, 0);
 
-        if (this.collidesWith(game.player)) {
+        if (this.collidesWith(this.target)) {
             var now = (new Date()).getTime();
             if (now-this.lastDamage > this.damageSpeed) {
-                game.player.damage(5);
+                this.target.damage(this, 5);
                 this.lastDamage = now;
             }
         }
     },
 
-    damage: function(d) {
+    damage: function(sender, d) {
+        BloodStack.add(this);
         this.health -= d;
         if (this.health < 0)
             game.removeObject(this);
         this.setSprite(48, 32);
+        //this.target = sender;
     }
 });
 
@@ -175,6 +216,7 @@ var SuperZombie = Zombie.extend({
     },
 
     onRemove: function() {
+        this._super();
         game.removeObject(this.weapon);
     },
 
@@ -203,10 +245,10 @@ var Bullet = Object.extend({
 
         var collider = this.collider();
         if (collider && collider != this.owner) {
-            game.removeObject(this);
             if (collider.damage) {
-                collider.damage(this.damage);
+                collider.damage(this.owner, this.damage);
             }
+            game.removeObject(this);
         }
     }
 });
@@ -270,7 +312,8 @@ var Player = Object.extend({
         this.weapon.positionRelativeTo(this, -15, 10, -0.1);
     },
 
-    damage: function(d) {
+    damage: function(sender, d) {
+        BloodStack.add(this);
         this.health = Math.max(0, this.health-d);
         if (this.health < 1) {
             game.paused = true;
@@ -304,8 +347,8 @@ var Game = Class.extend({
     removeObject: function(object) {
         object.onRemove();
         var index = _.indexOf(this.objects, object);
-        this.objects.splice(index, 1);
-        $(object.div).remove();
+        if (index >= 0)
+            this.objects.splice(index, 1);
     },
 
     frame: function() {
@@ -335,9 +378,9 @@ $(function() {
     window.setInterval(function() {
         if (!game.paused)
             (new Zombie()).position(32+Math.random()*700, 32+Math.random()*500);
-    }, 1000);
+    }, 2000);
     window.setInterval(function() {
-        if (!game.paused)
+        if (!game.paused && game.objects.length < 200)
             (new SuperZombie()).position(32+Math.random()*700, 32+Math.random()*500);
-    }, 8000);
+    }, 5000);
 });
