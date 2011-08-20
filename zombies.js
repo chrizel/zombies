@@ -84,15 +84,19 @@ var Object = Backbone.Model.extend({
         var self = this;
         var result = null;
         _.each(game.objects, function(object) {
-            if (object != self &&
-                object.isCollider &&
-                self.x >= object.x && self.x <= object.x+object.width &&
-                self.y >= object.y && self.y <= object.y+object.height)
-            {
+            if (object != self && self.collidesWith(object)) {
                 result = object;
             }
         });
         return result;
+    },
+
+    collidesWith: function(object) {
+        var midx = this.x + this.width/2;
+        var midy = this.y + this.height/2;
+        return (object.isCollider &&
+                midx >= object.x && midx <= object.x+object.width &&
+                midy >= object.y && midy <= object.y+object.height);
     },
 
     frame: function() {
@@ -101,9 +105,12 @@ var Object = Backbone.Model.extend({
 });
 
 var Zombie = Object.extend({
+    lastDamage: 0,
+    damageSpeed: 1000,
+
     initialize: function() {
         Object.prototype.initialize.call(this, 48, 0, 48, 32);
-        this.health = 100;
+        this.health = 50;
     },
 
     frame: function() {
@@ -119,6 +126,14 @@ var Zombie = Object.extend({
             this.go(2);
 
         this.setSprite(48, 0);
+
+        if (this.collidesWith(game.player)) {
+            var now = (new Date()).getTime();
+            if (now-this.lastDamage > this.damageSpeed) {
+                game.player.damage(5);
+                this.lastDamage = now;
+            }
+        }
     },
 
     damage: function(d) {
@@ -206,6 +221,13 @@ var Player = Object.extend({
 
         this.weapon1.positionRelativeTo(this, -20, 10, -0.1);
         this.weapon2.positionRelativeTo(this, 20, 10, 0.01);
+    },
+
+    damage: function(d) {
+        this.health = Math.max(0, this.health-d);
+        if (this.health < 1) {
+            game.paused = true;
+        }
     }
 });
 
@@ -242,6 +264,9 @@ var Game = Backbone.Model.extend({
         _.each(this.objects, function(object) {
             object.frame();
         });
+
+        if (this.player)
+            $('#hid').html('Health: ' + this.player.health);
     }
 });
 
@@ -253,5 +278,5 @@ $(function() {
     window.setInterval(function() {
         if (!game.paused)
             (new Zombie()).position(Math.random()*800, Math.random()*600);
-    }, 3000);
+    }, 1000);
 });
