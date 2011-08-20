@@ -1,9 +1,9 @@
 var game = null;
 
-var InputHandler = Backbone.Model.extend({
+var InputHandler = Class.extend({
     pressedKeys: [],
 
-    initialize: function() {
+    init: function() {
         var self = this;
 
         $(window).keydown(function(e) {
@@ -20,11 +20,12 @@ var InputHandler = Backbone.Model.extend({
     }
 });
 
-var Object = Backbone.Model.extend({
+var Object = Class.extend({
 
     isCollider: true,
+    isWall: false,
 
-    initialize: function(x, y, width, height) {
+    init: function(x, y, width, height) {
         this.width = width;
         this.height = height;
         this.div = $('<div>')
@@ -74,17 +75,25 @@ var Object = Backbone.Model.extend({
         this.rotation(object.rad + (angle || 0));
     },
 
-    go: function(speed) {
+    go: function(speed, checkCollision) {
+        var xold = this.x;
+        var yold = this.y;
         var xOffset = Math.sin(this.rad) * speed;
         var yOffset = Math.cos(this.rad) * speed;
         this.position(this.x-xOffset, this.y+yOffset);
+
+        if (checkCollision && this.collider(true)) {
+            this.position(xold, yold);
+        }
     },
 
-    collider: function() {
+    collider: function(onlyWalls) {
         var self = this;
         var result = null;
         _.each(game.objects, function(object) {
-            if (object != self && self.collidesWith(object)) {
+            if (object != self && 
+                (!onlyWalls || object.isWall) &&
+                self.collidesWith(object)) {
                 result = object;
             }
         });
@@ -104,12 +113,22 @@ var Object = Backbone.Model.extend({
 
 });
 
+var Brick = Object.extend({
+
+    isWall: true,
+
+    init: function() {
+        this._super(96, 0, 16, 16);
+    },
+
+});
+
 var Zombie = Object.extend({
     lastDamage: 0,
     damageSpeed: 1000,
 
-    initialize: function() {
-        Object.prototype.initialize.call(this, 48, 0, 48, 32);
+    init: function() {
+        this._super(48, 0, 48, 32);
         this.health = 50;
     },
 
@@ -123,7 +142,7 @@ var Zombie = Object.extend({
 
         this.rotation(alpha);
         if (c > 16)
-            this.go(2);
+            this.go(2, true);
 
         this.setSprite(48, 0);
 
@@ -148,17 +167,18 @@ var Bullet = Object.extend({
 
     isCollider: false,
 
-    initialize: function() {
-        Object.prototype.initialize.call(this, 0, 16, 5, 5);
+    init: function(owner) {
+        this._super(0, 16, 5, 5);
+        this.owner = owner;
     },
 
     frame: function() {
-        this.go(20);
+        this.go(14, false);
         if (this.x < 0 || this.y < 0 || this.x > 800 || this.y > 600)
             game.removeObject(this);
 
         var collider = this.collider();
-        if (collider && collider != game.player) {
+        if (collider && collider != this.owner) {
             game.removeObject(this);
             if (collider.damage) {
                 collider.damage(20);
@@ -169,19 +189,24 @@ var Bullet = Object.extend({
 
 var Weapon = Object.extend({
     lastBullet: 0,
-    speed: 100,
+    ammo: 100,
     isCollider: false,
 
-    initialize: function() {
-        Object.prototype.initialize.call(this, 0, 21, 5, 11);
+    init: function(speed) {
+        this._super(0, 21, 5, 11);
+        this.speed = speed;
     },
 
-    shoot: function() {
+    shoot: function(owner) {
         var now = (new Date()).getTime();
         if (now-this.lastBullet > this.speed) {
-            var bullet = new Bullet();
-            bullet.positionRelativeTo(this, 0, 10);
-            this.lastBullet = now;
+            this.ammo = Math.max(0, this.ammo-1);
+            if (this.ammo < 1) {
+            } else {
+                var bullet = new Bullet(owner);
+                bullet.positionRelativeTo(this, 0, 10);
+                this.lastBullet = now;
+            }
         }
     }
 
@@ -194,19 +219,18 @@ var Player = Object.extend({
     KEY_DOWN: 83,
     KEY_FIRE: 32,
 
-    initialize: function() {
-        Object.prototype.initialize.call(this, 0, 0, 48, 16);
-        this.weapon1 = new Weapon();
-        this.weapon2 = new Weapon();
+    init: function() {
+        this._super(0, 0, 48, 16);
+        this.weapon = new Weapon(200);
         this.health = 100;
     },
 
     frame: function() {
         if (game.inputHandler.pressed(this.KEY_UP)) {
-            this.go(8);
+            this.go(8, true);
         }
         if (game.inputHandler.pressed(this.KEY_DOWN)) {
-            this.go(-4);
+            this.go(-4, true);
         }
         if (game.inputHandler.pressed(this.KEY_LEFT)) {
             this.rotation(this.rad-0.2);
@@ -215,12 +239,10 @@ var Player = Object.extend({
             this.rotation(this.rad+0.2);
         }
         if (game.inputHandler.pressed(this.KEY_FIRE)) {
-            this.weapon1.shoot();
-            this.weapon2.shoot();
+            this.weapon.shoot(this);
         }
 
-        this.weapon1.positionRelativeTo(this, -20, 10, -0.1);
-        this.weapon2.positionRelativeTo(this, 20, 10, 0.01);
+        this.weapon.positionRelativeTo(this, -15, 10, -0.1);
     },
 
     damage: function(d) {
@@ -231,13 +253,13 @@ var Player = Object.extend({
     }
 });
 
-var Game = Backbone.Model.extend({
+var Game = Class.extend({
 
     KEY_PAUSE: 27,
     objects: [],
     paused: false,
 
-    initialize: function() {
+    init: function() {
         this.inputHandler = new InputHandler();
         var self = this;
         $(window).keydown(function(e) {
@@ -266,17 +288,29 @@ var Game = Backbone.Model.extend({
         });
 
         if (this.player)
-            $('#hid').html('Health: ' + this.player.health);
+            $('#hid').html('Health: ' + this.player.health + ' / Ammo: ' + this.player.weapon.ammo);
     }
 });
 
 $(function() { 
     game = new Game(); 
     game.player = new Player();
-    game.player.position(500, 500);
+    game.player.position(500, 50);
+
+    for (var i = 0; i < 48; i++) {
+        (new Brick()).position(16+i*16, 16);
+        (new Brick()).position(16+i*16, 560);
+    }
+    for (var i = 0; i < 33; i++) {
+        (new Brick()).position(16, 32+i*16);
+        (new Brick()).position(768, 32+i*16);
+    }
+
+    /*
     (new Zombie()).position(250, 150);
     window.setInterval(function() {
         if (!game.paused)
-            (new Zombie()).position(Math.random()*800, Math.random()*600);
+            (new Zombie()).position(32+Math.random()*700, 32+Math.random()*500);
     }, 1000);
+    */
 });
