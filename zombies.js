@@ -43,6 +43,9 @@ var Object = Class.extend({
         game.addObject(this);
     },   
 
+    onRemove: function() {
+    },
+
     setSprite: function(x, y) {
         $(this.div).css('background-position', '-' + x + 'px -' + y + 'px');
     },
@@ -129,7 +132,7 @@ var Zombie = Object.extend({
 
     init: function() {
         this._super(48, 0, 48, 32);
-        this.health = 50;
+        this.health = 30;
     },
 
     frame: function() {
@@ -163,13 +166,34 @@ var Zombie = Object.extend({
     }
 });
 
+var SuperZombie = Zombie.extend({
+
+    init: function() {
+        this._super();
+        this.health = 100;
+        this.weapon = new Weapon(1000, 1);
+    },
+
+    onRemove: function() {
+        game.removeObject(this.weapon);
+    },
+
+    frame: function() {
+        this._super();
+        this.weapon.positionRelativeTo(this, -19, 18, -0.1);
+        this.weapon.shoot(this);
+    }
+
+});
+
 var Bullet = Object.extend({
 
     isCollider: false,
 
-    init: function(owner) {
+    init: function(owner, damage) {
         this._super(0, 16, 5, 5);
         this.owner = owner;
+        this.damage = damage;
     },
 
     frame: function() {
@@ -181,7 +205,7 @@ var Bullet = Object.extend({
         if (collider && collider != this.owner) {
             game.removeObject(this);
             if (collider.damage) {
-                collider.damage(20);
+                collider.damage(this.damage);
             }
         }
     }
@@ -189,12 +213,13 @@ var Bullet = Object.extend({
 
 var Weapon = Object.extend({
     lastBullet: 0,
-    ammo: 100,
+    ammo: 999,
     isCollider: false,
 
-    init: function(speed) {
+    init: function(speed, damage) {
         this._super(0, 21, 5, 11);
         this.speed = speed;
+        this.damage = damage;
     },
 
     shoot: function(owner) {
@@ -203,7 +228,7 @@ var Weapon = Object.extend({
             this.ammo = Math.max(0, this.ammo-1);
             if (this.ammo < 1) {
             } else {
-                var bullet = new Bullet(owner);
+                var bullet = new Bullet(owner, this.damage);
                 bullet.positionRelativeTo(this, 0, 10);
                 this.lastBullet = now;
             }
@@ -221,7 +246,7 @@ var Player = Object.extend({
 
     init: function() {
         this._super(0, 0, 48, 16);
-        this.weapon = new Weapon(200);
+        this.weapon = new Weapon(200, 20);
         this.health = 100;
     },
 
@@ -277,6 +302,7 @@ var Game = Class.extend({
     },
 
     removeObject: function(object) {
+        object.onRemove();
         var index = _.indexOf(this.objects, object);
         this.objects.splice(index, 1);
         $(object.div).remove();
@@ -306,11 +332,12 @@ $(function() {
         (new Brick()).position(768, 32+i*16);
     }
 
-    /*
-    (new Zombie()).position(250, 150);
     window.setInterval(function() {
         if (!game.paused)
             (new Zombie()).position(32+Math.random()*700, 32+Math.random()*500);
     }, 1000);
-    */
+    window.setInterval(function() {
+        if (!game.paused)
+            (new SuperZombie()).position(32+Math.random()*700, 32+Math.random()*500);
+    }, 8000);
 });
