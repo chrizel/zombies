@@ -20,6 +20,31 @@ var InputHandler = Class.extend({
     }
 });
 
+var AudioManager = new (Class.extend({
+
+    bufferSize: 8,
+    sounds: [],
+    cur: [],
+
+    play: function(sound) {
+        if (!this.sounds[sound]) {
+            var array = new Array();
+            for (var i = 0; i < this.bufferSize; i++) {
+                array.push($('<audio>')
+                    .attr('preload', 'auto')
+                    .attr('autobuffer', 'autobuffer')
+                    .append($('<source>').attr('src', sound))
+                    .appendTo('body')[0]);
+            }
+            this.sounds[sound] = array;
+            this.cur[sound] = 0;
+        }
+
+        this.sounds[sound][this.cur[sound] % this.bufferSize].play();
+        this.cur[sound]++;
+    }
+}));
+
 var Object = Class.extend({
 
     isCollider: true,
@@ -191,6 +216,7 @@ var Zombie = Object.extend({
         if (this.collidesWith(this.target)) {
             var now = (new Date()).getTime();
             if (now-this.lastDamage > this.damageSpeed) {
+                AudioManager.play('zombie.wav');
                 this.target.damage(this, 5);
                 this.lastDamage = now;
             }
@@ -200,9 +226,11 @@ var Zombie = Object.extend({
     damage: function(sender, d) {
         BloodStack.add(this);
         this.health -= d;
-        if (this.health < 0)
-            game.removeObject(this);
         this.setSprite(48, 32);
+        if (this.health < 0) {
+            AudioManager.play('death.wav');
+            game.removeObject(this);
+        }
         //this.target = sender;
     }
 });
@@ -270,6 +298,7 @@ var Weapon = Object.extend({
             this.ammo = Math.max(0, this.ammo-1);
             if (this.ammo < 1) {
             } else {
+                AudioManager.play('shoot.wav');
                 var bullet = new Bullet(owner, this.damage);
                 bullet.positionRelativeTo(this, 0, 10);
                 this.lastBullet = now;
@@ -313,9 +342,11 @@ var Player = Object.extend({
     },
 
     damage: function(sender, d) {
+        AudioManager.play('hurt.wav');
         BloodStack.add(this);
         this.health = Math.max(0, this.health-d);
         if (this.health < 1) {
+            AudioManager.play('gameover.wav');
             game.paused = true;
         }
     }
