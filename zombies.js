@@ -256,6 +256,25 @@ var SuperZombie = Zombie.extend({
 
 });
 
+var Heart = Object.extend({
+
+    init: function(owner, damage) {
+        this._super(16, 32, 16, 16);
+    },
+
+    frame: function() {
+        var collider = this.collider();
+        if (collider) {
+            if (collider.health) {
+                AudioManager.play('heart.wav');
+                collider.health += 20;
+            }
+            game.removeObject(this);
+        }
+    }
+
+});
+
 var Bullet = Object.extend({
 
     isCollider: false,
@@ -408,14 +427,19 @@ $(function() {
         (new Brick()).position(768, 32+i*16);
     }
 
-    window.setTimeout(function() {
-        window.setInterval(function() {
-            if (!game.paused)
-                (new Zombie()).position(32+Math.random()*700, 32+Math.random()*500);
-        }, 2000);
-        window.setInterval(function() {
-            if (!game.paused && game.objects.length < 200)
-                (new SuperZombie()).position(32+Math.random()*700, 32+Math.random()*500);
-        }, 5000);
-    }, 6000);
+
+    window.setInterval(function() {
+        if (!game.paused) {
+            AudioManager.play('item.wav');
+            (new Heart()).position(32+Math.random()*700, 32+Math.random()*500);
+        }
+    }, 30000);
+    window.setInterval(function() {
+        if (!game.paused)
+            (new Zombie()).position(32+Math.random()*700, 32+Math.random()*500);
+    }, 2000);
+    window.setInterval(function() {
+        if (!game.paused && game.objects.length < 200)
+            (new SuperZombie()).position(32+Math.random()*700, 32+Math.random()*500);
+    }, 5000);
 });
