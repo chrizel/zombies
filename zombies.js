@@ -397,6 +397,8 @@ $(function() {
     game.player = new Player();
     game.player.position(500, 50);
 
+    AudioManager.play('music0.mp3');
+
     for (var i = 0; i < 48; i++) {
         (new Brick()).position(16+i*16, 16);
         (new Brick()).position(16+i*16, 560);
@@ -406,12 +408,14 @@ $(function() {
         (new Brick()).position(768, 32+i*16);
     }
 
-    window.setInterval(function() {
-        if (!game.paused)
-            (new Zombie()).position(32+Math.random()*700, 32+Math.random()*500);
-    }, 2000);
-    window.setInterval(function() {
-        if (!game.paused && game.objects.length < 200)
-            (new SuperZombie()).position(32+Math.random()*700, 32+Math.random()*500);
-    }, 5000);
+    window.setTimeout(function() {
+        window.setInterval(function() {
+            if (!game.paused)
+                (new Zombie()).position(32+Math.random()*700, 32+Math.random()*500);
+        }, 2000);
+        window.setInterval(function() {
+            if (!game.paused && game.objects.length < 200)
+                (new SuperZombie()).position(32+Math.random()*700, 32+Math.random()*500);
+        }, 5000);
+    }, 6000);
 });
