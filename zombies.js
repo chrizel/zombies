@@ -174,7 +174,7 @@ var Blood = Object.extend({
 var BloodStack = new (Class.extend({
 
     stack: [],
-    max: 50,
+    max: 100,
 
     init: function() {
     },
@@ -281,6 +281,25 @@ var Heart = Object.extend({
 
 });
 
+var Ammo = Object.extend({
+
+    init: function(owner, damage) {
+        this._super(32, 32, 16, 16);
+    },
+
+    frame: function() {
+        var collider = this.collider();
+        if (collider) {
+            if (collider.weapon) {
+                AudioManager.play('heart.wav');
+                collider.weapon.ammo += 100;
+            }
+            game.removeObject(this);
+        }
+    }
+
+});
+
 var Bullet = Object.extend({
 
     isCollider: false,
@@ -308,7 +327,7 @@ var Bullet = Object.extend({
 
 var Weapon = Object.extend({
     lastBullet: 0,
-    ammo: 999,
+    ammo: 200,
     isCollider: false,
 
     init: function(speed, damage) {
@@ -344,7 +363,7 @@ var Player = Object.extend({
 
     init: function() {
         this._super(0, 0, 48, 16);
-        this.weapon = new Weapon(200, 20);
+        this.weapon = new Weapon(100, 20);
         this.health = 100;
     },
 
@@ -446,13 +465,19 @@ $(function() {
     window.setInterval(function() {
         if (!game.paused) {
             AudioManager.play('item.wav');
+            (new Ammo()).position(32+Math.random()*700, 32+Math.random()*500);
+        }
+    }, 20000);
+    window.setInterval(function() {
+        if (!game.paused) {
+            AudioManager.play('item.wav');
             (new Heart()).position(32+Math.random()*700, 32+Math.random()*500);
         }
     }, 30000);
     window.setInterval(function() {
         if (!game.paused)
             (new Zombie()).position(32+Math.random()*700, 32+Math.random()*500);
-    }, 2000);
+    }, 1500);
     window.setInterval(function() {
         if (!game.paused && game.objects.length < 200)
             (new SuperZombie()).position(32+Math.random()*700, 32+Math.random()*500);
