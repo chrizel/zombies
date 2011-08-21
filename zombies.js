@@ -235,6 +235,7 @@ var Zombie = Object.extend({
         if (this.health < 0) {
             AudioManager.play('death.wav');
             game.removeObject(this);
+            game.kills++;
         }
         //this.target = sender;
     }
@@ -387,6 +388,7 @@ var Player = Object.extend({
 var Game = Class.extend({
 
     KEY_PAUSE: 27,
+    kills: 0,
     objects: [],
     paused: false,
 
@@ -420,7 +422,7 @@ var Game = Class.extend({
         });
 
         if (this.player)
-            $('#hid').html('Health: ' + this.player.health + ' / Ammo: ' + this.player.weapon.ammo);
+            $('#hid').html('Health: ' + this.player.health + ' / Ammo: ' + this.player.weapon.ammo + ' / Kills: ' + this.kills);
     }
 });
 
