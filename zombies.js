@@ -107,11 +107,16 @@ var Object = Class.extend({
         this.rotation(object.rad + (angle || 0));
     },
 
-    go: function(speed, checkCollision) {
+    go: function(speed, checkCollision, sidewarts) {
         var xold = this.x;
         var yold = this.y;
-        var xOffset = Math.sin(this.rad) * speed;
-        var yOffset = Math.cos(this.rad) * speed;
+        if (sidewarts) {
+            var xOffset = Math.sin(this.rad+Math.PI/2) * speed;
+            var yOffset = Math.cos(this.rad+Math.PI/2) * speed;
+        } else {
+            var xOffset = Math.sin(this.rad) * speed;
+            var yOffset = Math.cos(this.rad) * speed;
+        }
         this.position(this.x-xOffset, this.y+yOffset);
 
         if (checkCollision && this.collider(true)) {
@@ -332,6 +337,8 @@ var Player = Object.extend({
     KEY_RIGHT: 68,
     KEY_UP: 87,
     KEY_DOWN: 83,
+    KEY_STRAIGHT_LEFT: 81,
+    KEY_STRAIGHT_RIGHT: 69,
     KEY_FIRE: 32,
 
     init: function() {
@@ -346,6 +353,12 @@ var Player = Object.extend({
         }
         if (game.inputHandler.pressed(this.KEY_DOWN)) {
             this.go(-4, true);
+        }
+        if (game.inputHandler.pressed(this.KEY_STRAIGHT_LEFT)) {
+            this.go(-6, true, true);
+        }
+        if (game.inputHandler.pressed(this.KEY_STRAIGHT_RIGHT)) {
+            this.go(6, true, true);
         }
         if (game.inputHandler.pressed(this.KEY_LEFT)) {
             this.rotation(this.rad-0.2);
@@ -414,7 +427,8 @@ var Game = Class.extend({
 $(function() { 
     game = new Game(); 
     game.player = new Player();
-    game.player.position(500, 50);
+    game.player.position(380, 340);
+    game.player.rotation(Math.PI);
 
     AudioManager.play('music0.mp3');
 
@@ -426,7 +440,6 @@ $(function() {
         (new Brick()).position(16, 32+i*16);
         (new Brick()).position(768, 32+i*16);
     }
-
 
     window.setInterval(function() {
         if (!game.paused) {
